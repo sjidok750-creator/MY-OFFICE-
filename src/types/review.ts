@@ -7,6 +7,8 @@ export interface GuidelineInfo {
 
 export interface RuleResult {
   id: string;
+  /** "overall" = 최초 종합 검토, "detail" = 세부사항 검토 */
+  category: "overall" | "detail";
   rule: string;
   status: "pass" | "fail" | "partial";
   location?: string;

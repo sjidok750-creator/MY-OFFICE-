@@ -25,64 +25,180 @@ interface FileReviewResult {
   result: ReviewResult;
 }
 
+/*
+ * ── 검토 원칙 ────────────────────────────────────────────────
+ * [최초 종합 검토] 검토기준을 면밀히 살펴보고 보고서가 형식·내용
+ *   전반에서 지침과 일치하는지 최초 확인 (서두 구성 등)
+ * [세부사항 검토]
+ *   D01. 보고서 목차가 지침과 일치하는가
+ *   D02. 용역명이 전체 보고서에 동일하게 수록되었는가
+ *   D03. 부재별 외관조사 손상수량과 타 보고서의 손상수량이 일치하는가
+ *   D04. 상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가
+ *   D05. 보고서 내 날짜들이 통일성을 갖추고 있는가
+ *   D06. 요약문(요약보고서)과 본문이 일치하는가
+ * ─────────────────────────────────────────────────────────── */
+
 /* 파일별로 다른 결과를 보여주기 위한 mock 변형 3종 */
 const MOCK_VARIANTS: ReviewResult[] = [
+  /* ── 변형 A: 보통 수준 (용역명 혼재·날짜 불일치) ─── */
   {
     guideline: { version: "v2.3", updatedAt: "2026-02-28" },
-    summary: { total: 10, pass: 7, fail: 2, partial: 1, score: 75 },
+    summary: { total: 7, pass: 3, fail: 2, partial: 2, score: 71 },
     rules: [
-      { id: "R01", rule: "제목은 굵게 표시", status: "pass" },
-      { id: "R02", rule: "날짜 표기 형식 (YYYY-MM-DD)", status: "fail", location: "3페이지 2번 항목", suggestion: "날짜를 'YYYY-MM-DD' 형식으로 수정 필요" },
-      { id: "R03", rule: "서명란 포함 여부", status: "partial", location: "마지막 페이지", suggestion: "결재자 서명란이 누락되어 있습니다." },
-      { id: "R04", rule: "목차 형식 준수", status: "pass" },
-      { id: "R05", rule: "페이지 번호 삽입", status: "fail", location: "전체 페이지", suggestion: "각 페이지 하단에 페이지 번호를 추가하세요." },
-      { id: "R06", rule: "참고문헌 표기", status: "pass" },
-      { id: "R07", rule: "단위 표기 통일", status: "pass" },
-      { id: "R08", rule: "약어 최초 사용 시 정의 명시", status: "pass" },
-      { id: "R09", rule: "그림·표 캡션 형식", status: "pass" },
-      { id: "R10", rule: "들여쓰기 2칸 규칙", status: "pass" },
+      {
+        id: "O01", category: "overall",
+        rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부",
+        status: "partial",
+        location: "1~3페이지",
+        suggestion: "서두에 '조사 목적'과 '조사 범위' 항목은 수록되어 있으나, 지침이 요구하는 '업무 수행 근거(계약 번호)'가 누락되어 있습니다.",
+      },
+      {
+        id: "D01", category: "detail",
+        rule: "보고서 목차가 지침 양식과 일치하는가",
+        status: "pass",
+      },
+      {
+        id: "D02", category: "detail",
+        rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",
+        status: "fail",
+        location: "표지·1p / 15p·22p",
+        suggestion: "표지 및 1p에는 '○○교량 정밀안전진단'으로 표기되어 있으나, 15p·22p에는 '○○교 정밀안전점검'으로 상이하게 기재되어 있습니다. 용역명을 전체적으로 통일해 주세요.",
+      },
+      {
+        id: "D03", category: "detail",
+        rule: "부재별 외관조사 손상수량과 타 보고서의 손상수량이 일치하는가",
+        status: "partial",
+        location: "외관조사편 38p / 종합보고서 표 7-2",
+        suggestion: "주거더 균열 수량이 외관조사편(38p)에는 47개소로, 종합보고서 표 7-2에는 43개소로 상이합니다. 확인 후 통일이 필요합니다.",
+      },
+      {
+        id: "D04", category: "detail",
+        rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",
+        status: "pass",
+      },
+      {
+        id: "D05", category: "detail",
+        rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",
+        status: "fail",
+        location: "표지 / 4p / 말미 서명란",
+        suggestion: "표지에는 '2026.01', 4p 조사 일정표에는 '2025.12', 말미 서명란에는 '2026년 2월'로 서로 다른 날짜가 기재되어 있습니다. 기준 시점을 확정하고 전체 일치시켜 주세요.",
+      },
+      {
+        id: "D06", category: "detail",
+        rule: "요약문(요약보고서)과 본문이 일치하는가",
+        status: "pass",
+      },
     ],
     typos: [
-      { original: "기술직원", corrected: "기술 직원", location: "5p 3줄" },
-      { original: "관련사항", corrected: "관련 사항", location: "7p 1줄" },
+      { original: "손상갯수", corrected: "손상 개수", location: "38p 2줄" },
+      { original: "안전율확보", corrected: "안전율 확보", location: "52p 5줄" },
     ],
   },
+
+  /* ── 변형 B: 양호 수준 (날짜 표기만 부분 미흡) ─── */
   {
     guideline: { version: "v2.3", updatedAt: "2026-02-28" },
-    summary: { total: 10, pass: 9, fail: 1, partial: 0, score: 92 },
+    summary: { total: 7, pass: 6, fail: 0, partial: 1, score: 93 },
     rules: [
-      { id: "R01", rule: "제목은 굵게 표시", status: "pass" },
-      { id: "R02", rule: "날짜 표기 형식 (YYYY-MM-DD)", status: "pass" },
-      { id: "R03", rule: "서명란 포함 여부", status: "pass" },
-      { id: "R04", rule: "목차 형식 준수", status: "pass" },
-      { id: "R05", rule: "페이지 번호 삽입", status: "fail", location: "2페이지", suggestion: "2페이지 하단에 페이지 번호가 누락되었습니다." },
-      { id: "R06", rule: "참고문헌 표기", status: "pass" },
-      { id: "R07", rule: "단위 표기 통일", status: "pass" },
-      { id: "R08", rule: "약어 최초 사용 시 정의 명시", status: "pass" },
-      { id: "R09", rule: "그림·표 캡션 형식", status: "pass" },
-      { id: "R10", rule: "들여쓰기 2칸 규칙", status: "pass" },
+      {
+        id: "O01", category: "overall",
+        rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부",
+        status: "pass",
+      },
+      {
+        id: "D01", category: "detail",
+        rule: "보고서 목차가 지침 양식과 일치하는가",
+        status: "pass",
+      },
+      {
+        id: "D02", category: "detail",
+        rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",
+        status: "pass",
+      },
+      {
+        id: "D03", category: "detail",
+        rule: "부재별 외관조사 손상수량과 타 보고서의 손상수량이 일치하는가",
+        status: "pass",
+      },
+      {
+        id: "D04", category: "detail",
+        rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",
+        status: "pass",
+      },
+      {
+        id: "D05", category: "detail",
+        rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",
+        status: "partial",
+        location: "2p 조사일정 표",
+        suggestion: "본문 전반의 날짜는 'YYYY년 MM월' 형식으로 통일되어 있으나, 2p 조사일정 표에서만 'YY.MM.DD' 약식 표기가 사용되었습니다. 형식을 통일해 주세요.",
+      },
+      {
+        id: "D06", category: "detail",
+        rule: "요약문(요약보고서)과 본문이 일치하는가",
+        status: "pass",
+      },
     ],
     typos: [],
   },
+
+  /* ── 변형 C: 미흡 수준 (구조 전반 문제) ─── */
   {
     guideline: { version: "v2.3", updatedAt: "2026-02-28" },
-    summary: { total: 10, pass: 5, fail: 4, partial: 1, score: 58 },
+    summary: { total: 7, pass: 1, fail: 4, partial: 2, score: 43 },
     rules: [
-      { id: "R01", rule: "제목은 굵게 표시", status: "fail", location: "1페이지", suggestion: "제목을 굵게(Bold) 처리해야 합니다." },
-      { id: "R02", rule: "날짜 표기 형식 (YYYY-MM-DD)", status: "fail", location: "2페이지", suggestion: "날짜를 'YYYY-MM-DD' 형식으로 수정 필요" },
-      { id: "R03", rule: "서명란 포함 여부", status: "partial", location: "마지막 페이지", suggestion: "결재자 서명란이 불완전합니다." },
-      { id: "R04", rule: "목차 형식 준수", status: "pass" },
-      { id: "R05", rule: "페이지 번호 삽입", status: "fail", location: "전체 페이지", suggestion: "각 페이지에 번호를 추가하세요." },
-      { id: "R06", rule: "참고문헌 표기", status: "pass" },
-      { id: "R07", rule: "단위 표기 통일", status: "fail", location: "4~7페이지", suggestion: "'kg'과 'KG'이 혼용되어 있습니다. 하나로 통일하세요." },
-      { id: "R08", rule: "약어 최초 사용 시 정의 명시", status: "pass" },
-      { id: "R09", rule: "그림·표 캡션 형식", status: "pass" },
-      { id: "R10", rule: "들여쓰기 2칸 규칙", status: "pass" },
+      {
+        id: "O01", category: "overall",
+        rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부",
+        status: "fail",
+        location: "1~4페이지",
+        suggestion: "지침이 요구하는 서두 필수 항목(조사 목적·근거·범위·일정·투입 기술자·사용 장비 목록) 중 '사용 장비 목록'과 '투입 기술자 현황'이 서두에 존재하지 않습니다.",
+      },
+      {
+        id: "D01", category: "detail",
+        rule: "보고서 목차가 지침 양식과 일치하는가",
+        status: "fail",
+        location: "목차 (i페이지)",
+        suggestion: "지침 양식에 명시된 '6장 내하력 평가'와 '7장 종합 평가' 항목이 목차에서 누락되어 있습니다. 목차를 지침 양식에 맞게 수정하고 해당 장을 보완해 주세요.",
+      },
+      {
+        id: "D02", category: "detail",
+        rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",
+        status: "fail",
+        location: "표지 / 3p / 42p / 말미",
+        suggestion: "총 4개 위치에서 용역명이 각각 다르게 기재되어 있습니다. 표지 기준으로 전체 통일이 필요합니다.",
+      },
+      {
+        id: "D03", category: "detail",
+        rule: "부재별 외관조사 손상수량과 타 보고서의 손상수량이 일치하는가",
+        status: "partial",
+        location: "외관조사편 전반 / 종합보고서 표 5-1~5-4",
+        suggestion: "슬래브 균열·박리 수량은 일치하나, 교각 및 교대 손상 수량에서 외관조사편과 종합보고서 간 3~5개소 차이가 발생합니다. 원본 야장과 대조 후 수정 바랍니다.",
+      },
+      {
+        id: "D04", category: "detail",
+        rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",
+        status: "fail",
+        location: "상태평가 종합표 (61p)",
+        suggestion: "지침 Table 4.3의 감점 기준에 따르면 주거더 균열 밀도 0.3mm 이상 항목은 -15점 처리해야 하나, 본 보고서는 -5점으로 산정되어 있습니다. 재산정이 필요합니다.",
+      },
+      {
+        id: "D05", category: "detail",
+        rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",
+        status: "partial",
+        location: "표지·4p·말미 서명란",
+        suggestion: "표지는 '2026.01', 4p는 '2025년 12월', 말미는 '2026-02-15'로 3가지 형식이 혼재합니다. 날짜 형식과 기준 시점을 모두 통일해 주세요.",
+      },
+      {
+        id: "D06", category: "detail",
+        rule: "요약문(요약보고서)과 본문이 일치하는가",
+        status: "pass",
+      },
     ],
     typos: [
-      { original: "기술직원", corrected: "기술 직원", location: "3p 2줄" },
-      { original: "관련사항", corrected: "관련 사항", location: "5p 1줄" },
-      { original: "업무처리", corrected: "업무 처리", location: "8p 4줄" },
+      { original: "손상갯수",     corrected: "손상 개수",     location: "29p 1줄" },
+      { original: "안전율확보",   corrected: "안전율 확보",   location: "43p 3줄" },
+      { original: "공용하중",     corrected: "공용 하중",     location: "55p 7줄" },
+      { original: "내하력산정",   corrected: "내하력 산정",   location: "61p 2줄" },
     ],
   },
 ];

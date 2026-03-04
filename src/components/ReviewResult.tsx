@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, XCircle, AlertCircle, Lightbulb, Download, MapPin } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Lightbulb, Download, MapPin, ClipboardList, Search } from "lucide-react";
 import type { ReviewResult, RuleResult } from "@/types/review";
 
 interface ReviewResultProps {
@@ -14,7 +14,7 @@ function RuleItem({ rule }: { rule: RuleResult }) {
       icon: <CheckCircle2 size={16} />,
       iconClass: "text-emerald-400",
       badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-      label: "통과",
+      label: "적합",
       border: "border-emerald-500/10",
     },
     fail: {
@@ -64,6 +64,59 @@ function RuleItem({ rule }: { rule: RuleResult }) {
   );
 }
 
+interface SectionProps {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  rules: RuleResult[];
+  accentColor: string;
+}
+
+function ReviewSection({ icon, title, subtitle, rules, accentColor }: SectionProps) {
+  const passCount = rules.filter((r) => r.status === "pass").length;
+  const failCount = rules.filter((r) => r.status === "fail").length;
+  const partialCount = rules.filter((r) => r.status === "partial").length;
+
+  return (
+    <div>
+      {/* Section header */}
+      <div
+        className="flex items-start gap-3 px-4 py-3 rounded-xl mb-3"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <span className={`${accentColor} mt-0.5 flex-shrink-0`}>{icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white">{title}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {passCount > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+              적합 {passCount}
+            </span>
+          )}
+          {partialCount > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+              부분 {partialCount}
+            </span>
+          )}
+          {failCount > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-medium">
+              불일치 {failCount}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {rules.map((rule) => (
+          <RuleItem key={rule.id} rule={rule} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ReviewResultView({ result, onExport }: ReviewResultProps) {
   const { summary } = result;
   const scoreColor =
@@ -73,6 +126,9 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
   const scoreGradient =
     summary.score >= 80 ? "from-emerald-500 to-teal-500" :
     summary.score >= 60 ? "from-amber-500 to-orange-500" : "from-red-500 to-rose-500";
+
+  const overallRules = result.rules.filter((r) => r.category === "overall");
+  const detailRules  = result.rules.filter((r) => r.category === "detail");
 
   return (
     <div className="space-y-5">
@@ -85,7 +141,7 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
           </span>
         </div>
 
-        {/* Score ring area */}
+        {/* Score ring */}
         <div className="flex items-center gap-6">
           <div className="relative w-24 h-24 flex-shrink-0">
             <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
@@ -115,9 +171,9 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
 
           <div className="flex-1 grid grid-cols-3 gap-3">
             {[
-              { count: summary.pass, label: "통과", color: "text-emerald-400", bg: "bg-emerald-500/10" },
-              { count: summary.fail, label: "불일치", color: "text-red-400", bg: "bg-red-500/10" },
-              { count: summary.partial, label: "부분", color: "text-amber-400", bg: "bg-amber-500/10" },
+              { count: summary.pass,    label: "적합",    color: "text-emerald-400", bg: "bg-emerald-500/10" },
+              { count: summary.fail,    label: "불일치",  color: "text-red-400",     bg: "bg-red-500/10"     },
+              { count: summary.partial, label: "부분",    color: "text-amber-400",   bg: "bg-amber-500/10"   },
             ].map(({ count, label, color, bg }) => (
               <div key={label} className={`${bg} rounded-xl p-3 text-center`}>
                 <div className={`text-2xl font-bold ${color}`}>{count}</div>
@@ -130,7 +186,7 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
         {/* Progress bar */}
         <div className="mt-4">
           <div className="flex justify-between text-xs text-slate-500 mb-1.5">
-            <span>전체 {summary.total}개 항목</span>
+            <span>전체 {summary.total}개 검토항목</span>
             <span>{summary.score}점 / 100점</span>
           </div>
           <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
@@ -142,17 +198,27 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
         </div>
       </div>
 
-      {/* Rules */}
-      <div>
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-          항목별 결과
-        </h3>
-        <div className="space-y-2">
-          {result.rules.map((rule) => (
-            <RuleItem key={rule.id} rule={rule} />
-          ))}
-        </div>
-      </div>
+      {/* Section: 최초 종합 검토 */}
+      {overallRules.length > 0 && (
+        <ReviewSection
+          icon={<ClipboardList size={16} />}
+          title="최초 종합 검토 — 형식·내용 전반"
+          subtitle="검토기준 지침과 보고서의 형식·서두·구성이 일치하는지 확인"
+          rules={overallRules}
+          accentColor="text-indigo-400"
+        />
+      )}
+
+      {/* Section: 세부사항 검토 */}
+      {detailRules.length > 0 && (
+        <ReviewSection
+          icon={<Search size={16} />}
+          title="세부사항 검토"
+          subtitle="목차·용역명·손상수량·상태평가·날짜·요약문 등 6개 항목"
+          rules={detailRules}
+          accentColor="text-blue-400"
+        />
+      )}
 
       {/* Typos */}
       {result.typos.length > 0 && (
