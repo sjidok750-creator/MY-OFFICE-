@@ -20,26 +20,72 @@ const ALLOWED_TYPES = [
 const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
 
-const MOCK_RESULT: ReviewResult = {
-  guideline: { version: "v2.3", updatedAt: "2026-02-28" },
-  summary: { total: 10, pass: 7, fail: 2, partial: 1, score: 75 },
-  rules: [
-    { id: "R01", rule: "제목은 굵게 표시", status: "pass" },
-    { id: "R02", rule: "날짜 표기 형식 (YYYY-MM-DD)", status: "fail", location: "3페이지 2번 항목", suggestion: "날짜를 'YYYY-MM-DD' 형식으로 수정 필요" },
-    { id: "R03", rule: "서명란 포함 여부", status: "partial", location: "마지막 페이지", suggestion: "결재자 서명란이 누락되어 있습니다." },
-    { id: "R04", rule: "목차 형식 준수", status: "pass" },
-    { id: "R05", rule: "페이지 번호 삽입", status: "fail", location: "전체 페이지", suggestion: "각 페이지 하단에 페이지 번호를 추가하세요." },
-    { id: "R06", rule: "참고문헌 표기", status: "pass" },
-    { id: "R07", rule: "단위 표기 통일", status: "pass" },
-    { id: "R08", rule: "약어 최초 사용 시 정의 명시", status: "pass" },
-    { id: "R09", rule: "그림·표 캡션 형식", status: "pass" },
-    { id: "R10", rule: "들여쓰기 2칸 규칙", status: "pass" },
-  ],
-  typos: [
-    { original: "기술직원", corrected: "기술 직원", location: "5p 3줄" },
-    { original: "관련사항", corrected: "관련 사항", location: "7p 1줄" },
-  ],
-};
+interface FileReviewResult {
+  fileName: string;
+  result: ReviewResult;
+}
+
+/* 파일별로 다른 결과를 보여주기 위한 mock 변형 3종 */
+const MOCK_VARIANTS: ReviewResult[] = [
+  {
+    guideline: { version: "v2.3", updatedAt: "2026-02-28" },
+    summary: { total: 10, pass: 7, fail: 2, partial: 1, score: 75 },
+    rules: [
+      { id: "R01", rule: "제목은 굵게 표시", status: "pass" },
+      { id: "R02", rule: "날짜 표기 형식 (YYYY-MM-DD)", status: "fail", location: "3페이지 2번 항목", suggestion: "날짜를 'YYYY-MM-DD' 형식으로 수정 필요" },
+      { id: "R03", rule: "서명란 포함 여부", status: "partial", location: "마지막 페이지", suggestion: "결재자 서명란이 누락되어 있습니다." },
+      { id: "R04", rule: "목차 형식 준수", status: "pass" },
+      { id: "R05", rule: "페이지 번호 삽입", status: "fail", location: "전체 페이지", suggestion: "각 페이지 하단에 페이지 번호를 추가하세요." },
+      { id: "R06", rule: "참고문헌 표기", status: "pass" },
+      { id: "R07", rule: "단위 표기 통일", status: "pass" },
+      { id: "R08", rule: "약어 최초 사용 시 정의 명시", status: "pass" },
+      { id: "R09", rule: "그림·표 캡션 형식", status: "pass" },
+      { id: "R10", rule: "들여쓰기 2칸 규칙", status: "pass" },
+    ],
+    typos: [
+      { original: "기술직원", corrected: "기술 직원", location: "5p 3줄" },
+      { original: "관련사항", corrected: "관련 사항", location: "7p 1줄" },
+    ],
+  },
+  {
+    guideline: { version: "v2.3", updatedAt: "2026-02-28" },
+    summary: { total: 10, pass: 9, fail: 1, partial: 0, score: 92 },
+    rules: [
+      { id: "R01", rule: "제목은 굵게 표시", status: "pass" },
+      { id: "R02", rule: "날짜 표기 형식 (YYYY-MM-DD)", status: "pass" },
+      { id: "R03", rule: "서명란 포함 여부", status: "pass" },
+      { id: "R04", rule: "목차 형식 준수", status: "pass" },
+      { id: "R05", rule: "페이지 번호 삽입", status: "fail", location: "2페이지", suggestion: "2페이지 하단에 페이지 번호가 누락되었습니다." },
+      { id: "R06", rule: "참고문헌 표기", status: "pass" },
+      { id: "R07", rule: "단위 표기 통일", status: "pass" },
+      { id: "R08", rule: "약어 최초 사용 시 정의 명시", status: "pass" },
+      { id: "R09", rule: "그림·표 캡션 형식", status: "pass" },
+      { id: "R10", rule: "들여쓰기 2칸 규칙", status: "pass" },
+    ],
+    typos: [],
+  },
+  {
+    guideline: { version: "v2.3", updatedAt: "2026-02-28" },
+    summary: { total: 10, pass: 5, fail: 4, partial: 1, score: 58 },
+    rules: [
+      { id: "R01", rule: "제목은 굵게 표시", status: "fail", location: "1페이지", suggestion: "제목을 굵게(Bold) 처리해야 합니다." },
+      { id: "R02", rule: "날짜 표기 형식 (YYYY-MM-DD)", status: "fail", location: "2페이지", suggestion: "날짜를 'YYYY-MM-DD' 형식으로 수정 필요" },
+      { id: "R03", rule: "서명란 포함 여부", status: "partial", location: "마지막 페이지", suggestion: "결재자 서명란이 불완전합니다." },
+      { id: "R04", rule: "목차 형식 준수", status: "pass" },
+      { id: "R05", rule: "페이지 번호 삽입", status: "fail", location: "전체 페이지", suggestion: "각 페이지에 번호를 추가하세요." },
+      { id: "R06", rule: "참고문헌 표기", status: "pass" },
+      { id: "R07", rule: "단위 표기 통일", status: "fail", location: "4~7페이지", suggestion: "'kg'과 'KG'이 혼용되어 있습니다. 하나로 통일하세요." },
+      { id: "R08", rule: "약어 최초 사용 시 정의 명시", status: "pass" },
+      { id: "R09", rule: "그림·표 캡션 형식", status: "pass" },
+      { id: "R10", rule: "들여쓰기 2칸 규칙", status: "pass" },
+    ],
+    typos: [
+      { original: "기술직원", corrected: "기술 직원", location: "3p 2줄" },
+      { original: "관련사항", corrected: "관련 사항", location: "5p 1줄" },
+      { original: "업무처리", corrected: "업무 처리", location: "8p 4줄" },
+    ],
+  },
+];
 
 /* ── Helpers ────────────────────────────────────────────────── */
 function formatBytes(bytes: number): string {
@@ -87,7 +133,9 @@ export default function HomePage() {
 
   /* Review */
   const [isReviewing, setIsReviewing] = useState(false);
-  const [result, setResult] = useState<ReviewResult | null>(null);
+  const [fileResults, setFileResults] = useState<FileReviewResult[]>([]);
+  const [activeFileIdx, setActiveFileIdx] = useState(0);
+  const [reviewProgress, setReviewProgress] = useState<{ current: number; total: number } | null>(null);
 
   /* Stats — start at 0, update after each review */
   const [stats, setStats] = useState({ reviews: 0, avgScore: 0, passRate: 0, typos: 0 });
@@ -163,19 +211,31 @@ export default function HomePage() {
   async function handleReview() {
     if (!canReview) return;
     setIsReviewing(true);
-    setResult(null);
-    await new Promise((r) => setTimeout(r, 2200));
+    setFileResults([]);
+    setActiveFileIdx(0);
 
-    const r = MOCK_RESULT;
-    setResult(r);
+    const results: FileReviewResult[] = [];
+    for (let i = 0; i < reportFiles.length; i++) {
+      setReviewProgress({ current: i + 1, total: reportFiles.length });
+      await new Promise((r) => setTimeout(r, 1500));
+      results.push({
+        fileName: reportFiles[i].name,
+        result: MOCK_VARIANTS[i % MOCK_VARIANTS.length],
+      });
+    }
+
+    setFileResults(results);
+    setReviewProgress(null);
     setIsReviewing(false);
 
-    /* Real-time stats update */
-    historyRef.current.push({
-      score: r.summary.score,
-      pass: r.summary.pass,
-      total: r.summary.total,
-      typos: r.typos.length,
+    /* Real-time stats update — accumulate per file */
+    results.forEach((fr) => {
+      historyRef.current.push({
+        score: fr.result.summary.score,
+        pass: fr.result.summary.pass,
+        total: fr.result.summary.total,
+        typos: fr.result.typos.length,
+      });
     });
     const h = historyRef.current;
     setStats({
@@ -637,38 +697,98 @@ export default function HomePage() {
             </div>
 
             {/* ─── Right Panel: Results ──────────────────────── */}
-            <div className="lg:sticky lg:top-24">
+            <div className="lg:sticky lg:top-24 space-y-4">
+
+              {/* Reviewing — progress per file */}
               {isReviewing && (
                 <div className="glass-card rounded-2xl overflow-hidden">
                   <div className="shimmer h-1 w-full" />
-                  <div className="p-16 flex flex-col items-center gap-5">
+                  <div className="p-14 flex flex-col items-center gap-5">
                     <div
                       className="w-20 h-20 rounded-2xl flex items-center justify-center"
-                      style={{
-                        background: "rgba(59,130,246,0.1)",
-                        border: "1px solid rgba(59,130,246,0.2)",
-                      }}
+                      style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}
                     >
                       <Loader2 size={32} className="text-blue-400 animate-spin" />
                     </div>
-                    <div className="text-center">
+                    <div className="text-center w-full max-w-xs">
                       <p className="text-lg font-semibold text-white">AI 검토 진행 중</p>
-                      <p className="text-sm text-slate-400 mt-1">
-                        지침 항목 분석 · 오타 탐지 중...
-                      </p>
-                      {reportFiles.length > 1 && (
-                        <p className="text-xs text-slate-500 mt-2">
-                          {reportFiles.length}개 파일 처리 중
-                        </p>
+                      {reviewProgress && (
+                        <>
+                          <p className="text-sm text-slate-400 mt-2">
+                            {reviewProgress.current} / {reviewProgress.total} 파일 처리 중
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1 truncate px-4">
+                            {reportFiles[reviewProgress.current - 1]?.name}
+                          </p>
+                          <div className="mt-4 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${(reviewProgress.current / reviewProgress.total) * 100}%`,
+                                background: "linear-gradient(90deg, #3B82F6, #8B5CF6)",
+                              }}
+                            />
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
                 </div>
               )}
 
-              {result && !isReviewing && <ReviewResultView result={result} onExport={handleExport} />}
+              {/* Per-file results */}
+              {fileResults.length > 0 && !isReviewing && (
+                <>
+                  {/* File tab selector */}
+                  <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-white">파일별 검토 결과</h3>
+                      <span className="text-xs text-slate-500">{fileResults.length}개 파일 완료</span>
+                    </div>
+                    <div className="flex overflow-x-auto">
+                      {fileResults.map((fr, idx) => {
+                        const score = fr.result.summary.score;
+                        const isActive = activeFileIdx === idx;
+                        const scoreColor =
+                          score >= 80 ? "text-emerald-400" :
+                          score >= 60 ? "text-amber-400" : "text-red-400";
+                        const scoreDot =
+                          score >= 80 ? "bg-emerald-400" :
+                          score >= 60 ? "bg-amber-400" : "bg-red-400";
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveFileIdx(idx)}
+                            className={`flex-shrink-0 flex flex-col items-start px-4 py-3 border-b-2 transition-all text-left min-w-[140px] max-w-[220px] ${
+                              isActive
+                                ? "border-blue-500 bg-blue-500/5"
+                                : "border-transparent hover:bg-white/[0.02]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 w-full">
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${scoreDot}`} />
+                              <p className="text-xs text-slate-400 truncate flex-1">{fr.fileName}</p>
+                            </div>
+                            <p className={`text-xl font-bold mt-1 ${scoreColor}`}>
+                              {score}
+                              <span className="text-xs font-normal text-slate-500 ml-0.5">점</span>
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              {!result && !isReviewing && (
+                  {/* Active file's review detail */}
+                  <ReviewResultView
+                    result={fileResults[activeFileIdx]?.result ?? fileResults[0].result}
+                    onExport={handleExport}
+                  />
+                </>
+              )}
+
+              {/* Empty state */}
+              {fileResults.length === 0 && !isReviewing && (
                 <div className="glass-card rounded-2xl p-16 flex flex-col items-center gap-4 text-center">
                   <div className="w-20 h-20 rounded-2xl flex items-center justify-center bg-white/[0.03]">
                     <FileSearch size={32} className="text-slate-700" />
