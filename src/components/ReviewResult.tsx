@@ -77,27 +77,27 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
   return (
     <div className="space-y-5">
       {/* Score Card */}
-      <div className="glass-card rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-slate-300">검토 결과</h2>
-          <span className="text-xs text-slate-500">
+      <div className="glass-card rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-white">검토 결과</h2>
+          <span className="text-xs text-slate-500 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">
             지침 {result.guideline.version} 기준
           </span>
         </div>
 
         {/* Score ring area */}
-        <div className="flex items-center gap-5">
-          <div className="relative w-20 h-20 flex-shrink-0">
-            <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+        <div className="flex items-center gap-6">
+          <div className="relative w-24 h-24 flex-shrink-0">
+            <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="9" />
               <circle
-                cx="40" cy="40" r="32"
+                cx="48" cy="48" r="38"
                 fill="none"
                 stroke="url(#scoreGrad)"
-                strokeWidth="8"
+                strokeWidth="9"
                 strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 32}`}
-                strokeDashoffset={`${2 * Math.PI * 32 * (1 - summary.score / 100)}`}
+                strokeDasharray={`${2 * Math.PI * 38}`}
+                strokeDashoffset={`${2 * Math.PI * 38 * (1 - summary.score / 100)}`}
                 className="transition-all duration-1000"
               />
               <defs>
@@ -108,7 +108,7 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
               </defs>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`text-xl font-bold ${scoreColor}`}>{summary.score}</span>
+              <span className={`text-2xl font-bold ${scoreColor}`}>{summary.score}</span>
               <span className="text-xs text-slate-500">점</span>
             </div>
           </div>
