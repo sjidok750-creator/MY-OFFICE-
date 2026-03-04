@@ -2,7 +2,7 @@
 
 import { useState, useRef, DragEvent, ChangeEvent } from "react";
 import {
-  Sparkles, BookOpen, Upload, FileText, X, CheckCircle2,
+  Sparkles, BookOpen, Upload, FileText, X,
   FolderOpen, Loader2, FileSearch, TrendingUp, Shield, Zap,
   ChevronRight, Plus, AlertCircle, CheckCircle, Files,
 } from "lucide-react";
@@ -19,12 +19,6 @@ const ALLOWED_TYPES = [
 ];
 const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
-const GUIDELINE_FILES = [
-  { id: "GL001", name: "업무보고서 작성 지침", version: "v2.3", updatedAt: "2026-02-28" },
-  { id: "GL002", name: "연구보고서 작성 지침", version: "v1.5", updatedAt: "2026-01-15" },
-  { id: "GL003", name: "감사보고서 작성 지침", version: "v3.1", updatedAt: "2025-12-10" },
-  { id: "GL004", name: "사업계획서 작성 지침", version: "v2.0", updatedAt: "2025-11-20" },
-];
 
 const MOCK_RESULT: ReviewResult = {
   guideline: { version: "v2.3", updatedAt: "2026-02-28" },
@@ -79,8 +73,8 @@ function validateFile(file: File): string | null {
 export default function HomePage() {
   /* Guideline */
   const [glTab, setGlTab] = useState<"select" | "upload">("select");
-  const [selectedGlId, setSelectedGlId] = useState<string | null>(null);
   const [uploadedGls, setUploadedGls] = useState<File[]>([]);
+  const glSelectInputRef = useRef<HTMLInputElement>(null);
   const [glErrors, setGlErrors] = useState<string[]>([]);
   const [isDraggingGl, setIsDraggingGl] = useState(false);
   const glInputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +94,7 @@ export default function HomePage() {
   const historyRef = useRef<{ score: number; pass: number; total: number; typos: number }[]>([]);
 
   /* Derived */
-  const hasGuideline = glTab === "select" ? selectedGlId !== null : uploadedGls.length > 0;
+  const hasGuideline = uploadedGls.length > 0;
   const canReview = hasGuideline && reportFiles.length > 0 && !isReviewing;
 
   /* ── Handlers ─────────────────────────────────────────────── */
@@ -333,10 +327,9 @@ export default function HomePage() {
                     <BookOpen size={16} className="text-white" />
                   </div>
                   <h2 className="text-sm font-semibold text-white">검토 기준</h2>
-                  {hasGuideline && (
-                    <span className="ml-auto flex items-center gap-1 text-xs text-emerald-400">
-                      <CheckCircle size={13} />
-                      {glTab === "upload" ? `${uploadedGls.length}개 선택됨` : "선택됨"}
+                  {uploadedGls.length > 0 && (
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/25">
+                      {uploadedGls.length}개 선택됨
                     </span>
                   )}
                 </div>
@@ -356,139 +349,132 @@ export default function HomePage() {
                       {tab === "select" ? (
                         <>
                           <FolderOpen size={13} />
-                          파일에서 선택
+                          파일 선택
                         </>
                       ) : (
                         <>
                           <Upload size={13} />
-                          직접 업로드
+                          드래그 업로드
                         </>
                       )}
                     </button>
                   ))}
                 </div>
 
-                <div className="p-5">
-                  {glTab === "select" ? (
-                    /* File selector */
+                <div className="p-5 space-y-3">
+                  {/* Shared file list — shown in both tabs */}
+                  {uploadedGls.length > 0 && (
                     <div className="space-y-2">
-                      {GUIDELINE_FILES.map((gl) => (
-                        <button
-                          key={gl.id}
-                          onClick={() => setSelectedGlId(gl.id)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all duration-150 text-left ${
-                            selectedGlId === gl.id
-                              ? "border-blue-500/50 bg-blue-500/10"
-                              : "border-white/[0.06] hover:border-white/15 hover:bg-white/[0.03]"
-                          }`}
+                      {uploadedGls.map((file, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"
                         >
                           <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                              selectedGlId === gl.id
-                                ? "bg-blue-500/20"
-                                : "bg-white/[0.05]"
-                            }`}
+                            className={`w-9 h-9 rounded-lg bg-gradient-to-br ${getFileGradient(file.name)} flex items-center justify-center flex-shrink-0`}
                           >
-                            <BookOpen
-                              size={14}
-                              className={
-                                selectedGlId === gl.id ? "text-blue-400" : "text-slate-400"
-                              }
-                            />
+                            <FileText size={15} className="text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{gl.name}</p>
-                            <p className="text-xs text-slate-500">
-                              {gl.version} · {gl.updatedAt}
-                            </p>
+                            <p className="text-sm font-medium text-white truncate">{file.name}</p>
+                            <p className="text-xs text-slate-500">{formatBytes(file.size)}</p>
                           </div>
-                          {selectedGlId === gl.id && (
-                            <CheckCircle2 size={15} className="text-blue-400 flex-shrink-0" />
-                          )}
-                        </button>
+                          <button
+                            onClick={() => removeGlFile(idx)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       ))}
                     </div>
-                  ) : (
-                    /* Upload guideline — multiple files */
-                    <div className="space-y-3">
-                      {uploadedGls.length > 0 && (
-                        <div className="space-y-2">
-                          {uploadedGls.map((file, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"
-                            >
-                              <div
-                                className={`w-9 h-9 rounded-lg bg-gradient-to-br ${getFileGradient(file.name)} flex items-center justify-center flex-shrink-0`}
-                              >
-                                <FileText size={15} className="text-white" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">{file.name}</p>
-                                <p className="text-xs text-slate-500">{formatBytes(file.size)}</p>
-                              </div>
-                              <button
-                                onClick={() => removeGlFile(idx)}
-                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-colors"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  )}
 
-                      <div
-                        onClick={() => glInputRef.current?.click()}
-                        onDrop={onGlDrop}
-                        onDragOver={(e) => { e.preventDefault(); setIsDraggingGl(true); }}
-                        onDragLeave={() => setIsDraggingGl(false)}
-                        className={`rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all duration-200 ${
-                          isDraggingGl
-                            ? "border-blue-500 bg-blue-500/10"
-                            : "border-white/10 hover:border-blue-500/40 hover:bg-white/[0.02]"
-                        }`}
+                  {glTab === "select" ? (
+                    /* 파일 선택: OS 파일 탐색기로 파일 선택 */
+                    <>
+                      <input
+                        ref={glSelectInputRef}
+                        type="file"
+                        accept={ALLOWED_EXT.join(",")}
+                        multiple
+                        onChange={onGlInputChange}
+                        className="hidden"
+                      />
+                      <button
+                        onClick={() => glSelectInputRef.current?.click()}
+                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-blue-500/40 transition-all duration-200 group"
                       >
-                        <input
-                          ref={glInputRef}
-                          type="file"
-                          accept={ALLOWED_EXT.join(",")}
-                          multiple
-                          onChange={onGlInputChange}
-                          className="hidden"
-                        />
-                        <div className="flex flex-col items-center gap-3">
-                          <div
-                            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
-                              isDraggingGl ? "bg-blue-500/20" : "bg-white/[0.04]"
-                            }`}
-                          >
-                            <Plus size={22} className={isDraggingGl ? "text-blue-400" : "text-slate-400"} />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-white">
-                              {uploadedGls.length > 0 ? "지침 파일 추가" : "지침 파일 업로드"}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">
-                              드래그&amp;드롭 또는 클릭 · 여러 파일 가능 · 최대 100MB
-                            </p>
-                          </div>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
+                          <FolderOpen size={22} className="text-blue-400" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-semibold text-white">
+                            {uploadedGls.length > 0 ? "파일 추가 선택" : "파일 선택"}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            클릭하여 폴더에서 파일 선택 · 여러 파일 가능
+                          </p>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-600 ml-auto group-hover:text-blue-400 transition-colors" />
+                      </button>
+                      <p className="text-xs text-slate-600 text-center">
+                        지원 형식: {ALLOWED_EXT.join(" ")} · 최대 100MB
+                      </p>
+                    </>
+                  ) : (
+                    /* 드래그 업로드: 드래그&드롭 */
+                    <div
+                      onClick={() => glInputRef.current?.click()}
+                      onDrop={onGlDrop}
+                      onDragOver={(e) => { e.preventDefault(); setIsDraggingGl(true); }}
+                      onDragLeave={() => setIsDraggingGl(false)}
+                      className={`rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all duration-200 ${
+                        isDraggingGl
+                          ? "border-blue-500 bg-blue-500/10"
+                          : "border-white/10 hover:border-blue-500/40 hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      <input
+                        ref={glInputRef}
+                        type="file"
+                        accept={ALLOWED_EXT.join(",")}
+                        multiple
+                        onChange={onGlInputChange}
+                        className="hidden"
+                      />
+                      <div className="flex flex-col items-center gap-3">
+                        <div
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+                            isDraggingGl ? "bg-blue-500/20" : "bg-white/[0.04]"
+                          }`}
+                        >
+                          <Upload size={22} className={isDraggingGl ? "text-blue-400" : "text-slate-400"} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            {isDraggingGl ? "여기에 놓으세요" : uploadedGls.length > 0 ? "파일 추가" : "파일을 드래그하세요"}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            드래그&amp;드롭 또는 클릭 · 여러 파일 가능 · 최대 100MB
+                          </p>
                         </div>
                       </div>
+                    </div>
+                  )}
 
-                      {glErrors.length > 0 && (
-                        <div className="space-y-1.5">
-                          {glErrors.map((err, i) => (
-                            <div
-                              key={i}
-                              className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
-                            >
-                              <AlertCircle size={12} className="text-red-400 mt-0.5 flex-shrink-0" />
-                              <p className="text-xs text-red-400">{err}</p>
-                            </div>
-                          ))}
+                  {/* Errors */}
+                  {glErrors.length > 0 && (
+                    <div className="space-y-1.5">
+                      {glErrors.map((err, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
+                        >
+                          <AlertCircle size={12} className="text-red-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-red-400">{err}</p>
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
