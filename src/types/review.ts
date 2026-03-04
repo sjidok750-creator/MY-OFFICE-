@@ -15,6 +15,18 @@ export interface RuleResult {
   suggestion?: string;
 }
 
+/** 페이지 단위 구체적 오류/경고 발견 사항 */
+export interface Finding {
+  /** 발견 위치 (예: "p.52", "표지·p.3·말미", "목차(i페이지)") */
+  page: string;
+  /** 오류 유형 (예: "용역명 오류", "손상수량 불일치") */
+  type: string;
+  /** 구체적 오류 내용 (예: "풍덕천교정밀안전점검 → 풍덕천교 정밀안전진단용역") */
+  detail: string;
+  /** error: 반드시 수정, warning: 권고 수정 */
+  severity: "error" | "warning";
+}
+
 export interface TypoItem {
   original: string;
   corrected: string;
@@ -32,6 +44,9 @@ export interface ReviewSummary {
 export interface ReviewResult {
   guideline: { version: string; updatedAt: string };
   summary: ReviewSummary;
+  /** 페이지 단위 구체적 발견 사항 (가장 먼저 표시) */
+  findings: Finding[];
+  /** 검토 항목별 pass/fail/partial 체크 (요약용) */
   rules: RuleResult[];
   typos: TypoItem[];
 }

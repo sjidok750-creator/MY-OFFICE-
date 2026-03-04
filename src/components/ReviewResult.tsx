@@ -1,124 +1,84 @@
 "use client";
 
-import { CheckCircle2, XCircle, AlertCircle, Lightbulb, Download, MapPin, ClipboardList, Search } from "lucide-react";
-import type { ReviewResult, RuleResult } from "@/types/review";
+import { useState } from "react";
+import {
+  CheckCircle2, XCircle, AlertCircle, Lightbulb,
+  Download, MapPin, AlertTriangle, Info,
+  ChevronDown, ChevronUp, FileText,
+} from "lucide-react";
+import type { ReviewResult, RuleResult, Finding } from "@/types/review";
 
+/* ── Finding row ─────────────────────────────────────────── */
+function FindingRow({ f }: { f: Finding }) {
+  const isError = f.severity === "error";
+  return (
+    <div
+      className={`flex gap-3 px-4 py-3.5 border-b last:border-b-0 transition-colors hover:bg-white/[0.03] ${
+        isError ? "border-white/[0.05]" : "border-white/[0.04]"
+      }`}
+    >
+      {/* Severity icon */}
+      <div className="flex-shrink-0 mt-0.5">
+        {isError ? (
+          <AlertTriangle size={14} className="text-red-400" />
+        ) : (
+          <Info size={14} className="text-amber-400" />
+        )}
+      </div>
+
+      {/* Page badge */}
+      <div className="flex-shrink-0 min-w-[80px]">
+        <span
+          className={`text-xs font-mono px-2 py-0.5 rounded ${
+            isError
+              ? "bg-red-500/10 text-red-300 border border-red-500/20"
+              : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
+          }`}
+        >
+          {f.page}
+        </span>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-slate-300 mb-0.5">{f.type}</p>
+        <p className="text-xs text-slate-400 leading-relaxed">{f.detail}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Compact rule row (in collapsible summary) ───────────── */
+function RuleRow({ rule }: { rule: RuleResult }) {
+  const config = {
+    pass:    { icon: <CheckCircle2 size={13} />, cls: "text-emerald-400", badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", label: "적합" },
+    fail:    { icon: <XCircle size={13} />,       cls: "text-red-400",     badge: "bg-red-500/10 text-red-400 border-red-500/20",           label: "불일치" },
+    partial: { icon: <AlertCircle size={13} />,   cls: "text-amber-400",   badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",     label: "부분" },
+  }[rule.status];
+
+  return (
+    <div className="flex items-start gap-2 py-2.5 border-b border-white/[0.04] last:border-b-0">
+      <span className={`${config.cls} flex-shrink-0 mt-0.5`}>{config.icon}</span>
+      <span className="text-xs font-mono text-slate-600 flex-shrink-0 w-8">{rule.id}</span>
+      <span className="text-xs text-slate-300 flex-1">{rule.rule}</span>
+      <span className={`text-[11px] px-1.5 py-0.5 rounded border flex-shrink-0 ${config.badge}`}>
+        {config.label}
+      </span>
+    </div>
+  );
+}
+
+/* ── Main component ──────────────────────────────────────── */
 interface ReviewResultProps {
+  fileName?: string;
   result: ReviewResult;
   onExport: (format: "pdf" | "md") => void;
 }
 
-function RuleItem({ rule }: { rule: RuleResult }) {
-  const config = {
-    pass: {
-      icon: <CheckCircle2 size={16} />,
-      iconClass: "text-emerald-400",
-      badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-      label: "적합",
-      border: "border-emerald-500/10",
-    },
-    fail: {
-      icon: <XCircle size={16} />,
-      iconClass: "text-red-400",
-      badge: "bg-red-500/15 text-red-400 border-red-500/25",
-      label: "불일치",
-      border: "border-red-500/10",
-    },
-    partial: {
-      icon: <AlertCircle size={16} />,
-      iconClass: "text-amber-400",
-      badge: "bg-amber-500/15 text-amber-400 border-amber-500/25",
-      label: "부분 충족",
-      border: "border-amber-500/10",
-    },
-  }[rule.status];
+export default function ReviewResultView({ fileName, result, onExport }: ReviewResultProps) {
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const { summary, findings, rules, typos } = result;
 
-  return (
-    <div className={`glass-card rounded-xl p-4 border ${config.border} transition-all duration-200 hover:bg-white/[0.06]`}>
-      <div className="flex items-start gap-3">
-        <span className={`${config.iconClass} mt-0.5 flex-shrink-0`}>{config.icon}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-mono text-slate-500">{rule.id}</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full border ${config.badge} font-medium`}>
-              {config.label}
-            </span>
-          </div>
-          <p className="text-sm text-white mt-1 font-medium">{rule.rule}</p>
-
-          {rule.location && (
-            <div className="flex items-center gap-1 mt-2">
-              <MapPin size={11} className="text-slate-500" />
-              <span className="text-xs text-slate-500">{rule.location}</span>
-            </div>
-          )}
-          {rule.suggestion && (
-            <div className="flex items-start gap-1.5 mt-2 bg-blue-500/8 rounded-lg px-3 py-2">
-              <Lightbulb size={12} className="text-blue-400 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-blue-300">{rule.suggestion}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface SectionProps {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  rules: RuleResult[];
-  accentColor: string;
-}
-
-function ReviewSection({ icon, title, subtitle, rules, accentColor }: SectionProps) {
-  const passCount = rules.filter((r) => r.status === "pass").length;
-  const failCount = rules.filter((r) => r.status === "fail").length;
-  const partialCount = rules.filter((r) => r.status === "partial").length;
-
-  return (
-    <div>
-      {/* Section header */}
-      <div
-        className="flex items-start gap-3 px-4 py-3 rounded-xl mb-3"
-        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <span className={`${accentColor} mt-0.5 flex-shrink-0`}>{icon}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white">{title}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {passCount > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-              적합 {passCount}
-            </span>
-          )}
-          {partialCount > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
-              부분 {partialCount}
-            </span>
-          )}
-          {failCount > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-medium">
-              불일치 {failCount}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        {rules.map((rule) => (
-          <RuleItem key={rule.id} rule={rule} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function ReviewResultView({ result, onExport }: ReviewResultProps) {
-  const { summary } = result;
   const scoreColor =
     summary.score >= 80 ? "text-emerald-400" :
     summary.score >= 60 ? "text-amber-400" : "text-red-400";
@@ -127,69 +87,70 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
     summary.score >= 80 ? "from-emerald-500 to-teal-500" :
     summary.score >= 60 ? "from-amber-500 to-orange-500" : "from-red-500 to-rose-500";
 
-  const overallRules = result.rules.filter((r) => r.category === "overall");
-  const detailRules  = result.rules.filter((r) => r.category === "detail");
+  const errorCount   = findings.filter((f) => f.severity === "error").length;
+  const warningCount = findings.filter((f) => f.severity === "warning").length;
 
   return (
-    <div className="space-y-5">
-      {/* Score Card */}
-      <div className="glass-card rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-white">검토 결과</h2>
-          <span className="text-xs text-slate-500 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-            지침 {result.guideline.version} 기준
-          </span>
-        </div>
+    <div className="glass-card rounded-2xl overflow-hidden">
 
-        {/* Score ring */}
-        <div className="flex items-center gap-6">
-          <div className="relative w-24 h-24 flex-shrink-0">
-            <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
-              <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="9" />
-              <circle
-                cx="48" cy="48" r="38"
-                fill="none"
-                stroke="url(#scoreGrad)"
-                strokeWidth="9"
-                strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 38}`}
-                strokeDashoffset={`${2 * Math.PI * 38 * (1 - summary.score / 100)}`}
-                className="transition-all duration-1000"
-              />
-              <defs>
-                <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor={summary.score >= 80 ? "#10B981" : summary.score >= 60 ? "#F59E0B" : "#EF4444"} />
-                  <stop offset="100%" stopColor={summary.score >= 80 ? "#14B8A6" : summary.score >= 60 ? "#F97316" : "#F43F5E"} />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`text-2xl font-bold ${scoreColor}`}>{summary.score}</span>
-              <span className="text-xs text-slate-500">점</span>
+      {/* ── Header: file name + score ─────────────────────── */}
+      <div
+        className="px-5 py-4 border-b border-white/[0.06]"
+        style={{ background: "rgba(255,255,255,0.02)" }}
+      >
+        <div className="flex items-center gap-4">
+          {/* File icon + name */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)" }}
+            >
+              <FileText size={16} className="text-indigo-400" />
+            </div>
+            <div className="min-w-0">
+              {fileName && (
+                <p className="text-sm font-semibold text-white truncate">{fileName}</p>
+              )}
+              <p className="text-xs text-slate-500">
+                지침 {result.guideline.version} · {result.guideline.updatedAt} 기준
+              </p>
             </div>
           </div>
 
-          <div className="flex-1 grid grid-cols-3 gap-3">
-            {[
-              { count: summary.pass,    label: "적합",    color: "text-emerald-400", bg: "bg-emerald-500/10" },
-              { count: summary.fail,    label: "불일치",  color: "text-red-400",     bg: "bg-red-500/10"     },
-              { count: summary.partial, label: "부분",    color: "text-amber-400",   bg: "bg-amber-500/10"   },
-            ].map(({ count, label, color, bg }) => (
-              <div key={label} className={`${bg} rounded-xl p-3 text-center`}>
-                <div className={`text-2xl font-bold ${color}`}>{count}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{label}</div>
+          {/* Score ring (compact) */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="relative w-14 h-14">
+              <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+                <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+                <circle
+                  cx="28" cy="28" r="22"
+                  fill="none"
+                  stroke={summary.score >= 80 ? "#10B981" : summary.score >= 60 ? "#F59E0B" : "#EF4444"}
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 22}`}
+                  strokeDashoffset={`${2 * Math.PI * 22 * (1 - summary.score / 100)}`}
+                  className="transition-all duration-1000"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-base font-bold leading-none ${scoreColor}`}>{summary.score}</span>
+                <span className="text-[10px] text-slate-500 leading-none">점</span>
               </div>
-            ))}
+            </div>
+
+            {/* pass/fail/partial mini summary */}
+            <div className="flex flex-col gap-1 text-xs">
+              <span className="text-emerald-400">적합 <b>{summary.pass}</b></span>
+              <span className="text-red-400">불일치 <b>{summary.fail}</b></span>
+              <span className="text-amber-400">부분 <b>{summary.partial}</b></span>
+            </div>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="mt-4">
-          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
-            <span>전체 {summary.total}개 검토항목</span>
-            <span>{summary.score}점 / 100점</span>
-          </div>
-          <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+        {/* Score progress bar */}
+        <div className="mt-3">
+          <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
             <div
               className={`h-full rounded-full bg-gradient-to-r ${scoreGradient} transition-all duration-1000`}
               style={{ width: `${summary.score}%` }}
@@ -198,43 +159,72 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
         </div>
       </div>
 
-      {/* Section: 최초 종합 검토 */}
-      {overallRules.length > 0 && (
-        <ReviewSection
-          icon={<ClipboardList size={16} />}
-          title="최초 종합 검토 — 형식·내용 전반"
-          subtitle="검토기준 지침과 보고서의 형식·서두·구성이 일치하는지 확인"
-          rules={overallRules}
-          accentColor="text-indigo-400"
-        />
-      )}
+      {/* ── Findings section ──────────────────────────────── */}
+      <div>
+        {/* Section label */}
+        <div className="px-5 py-3 border-b border-white/[0.06] flex items-center gap-2">
+          <AlertTriangle size={13} className="text-red-400" />
+          <span className="text-xs font-semibold text-slate-300">오류·경고 발견 내역</span>
+          {errorCount > 0 && (
+            <span className="text-[11px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 ml-1">
+              오류 {errorCount}건
+            </span>
+          )}
+          {warningCount > 0 && (
+            <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              경고 {warningCount}건
+            </span>
+          )}
+        </div>
 
-      {/* Section: 세부사항 검토 */}
-      {detailRules.length > 0 && (
-        <ReviewSection
-          icon={<Search size={16} />}
-          title="세부사항 검토"
-          subtitle="목차·용역명·손상수량·상태평가·날짜·요약문 등 6개 항목"
-          rules={detailRules}
-          accentColor="text-blue-400"
-        />
-      )}
+        {findings.length === 0 ? (
+          <div className="px-5 py-6 flex items-center gap-2 text-emerald-400">
+            <CheckCircle2 size={15} />
+            <span className="text-sm">발견된 오류 없음 — 검토기준 충족</span>
+          </div>
+        ) : (
+          <div>
+            {findings.map((f, i) => (
+              <FindingRow key={i} f={f} />
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* Typos */}
-      {result.typos.length > 0 && (
-        <div>
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            오타 · 오기 목록 ({result.typos.length}건)
-          </h3>
-          <div className="glass-card rounded-2xl divide-y divide-white/[0.05]">
-            {result.typos.map((typo, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3">
-                <span className="text-sm text-red-400 font-mono line-through opacity-70">{typo.original}</span>
-                <span className="text-slate-500 text-sm">→</span>
-                <span className="text-sm text-emerald-400 font-mono font-medium">{typo.corrected}</span>
-                <span className="ml-auto flex items-center gap-1 text-xs text-slate-500">
+      {/* ── Rule checklist (collapsible) ──────────────────── */}
+      <div className="border-t border-white/[0.06]">
+        <button
+          onClick={() => setRulesOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-slate-400 hover:text-slate-300 hover:bg-white/[0.02] transition-colors"
+        >
+          <span>검토 항목 체크리스트 ({summary.total}개 항목)</span>
+          {rulesOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {rulesOpen && (
+          <div className="px-4 pb-3">
+            {rules.map((r) => <RuleRow key={r.id} rule={r} />)}
+          </div>
+        )}
+      </div>
+
+      {/* ── Typos ─────────────────────────────────────────── */}
+      {typos.length > 0 && (
+        <div className="border-t border-white/[0.06]">
+          <div className="px-5 py-3 border-b border-white/[0.04] flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-400">오타·오기 목록</span>
+            <span className="text-[11px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
+              {typos.length}건
+            </span>
+          </div>
+          <div className="divide-y divide-white/[0.04]">
+            {typos.map((t, i) => (
+              <div key={i} className="flex items-center gap-2.5 px-5 py-2.5 text-xs">
+                <span className="font-mono text-red-400 line-through opacity-70">{t.original}</span>
+                <span className="text-slate-600">→</span>
+                <span className="font-mono text-emerald-400 font-medium">{t.corrected}</span>
+                <span className="ml-auto flex items-center gap-1 text-slate-500">
                   <MapPin size={10} />
-                  {typo.location}
+                  {t.location}
                 </span>
               </div>
             ))}
@@ -242,21 +232,21 @@ export default function ReviewResultView({ result, onExport }: ReviewResultProps
         </div>
       )}
 
-      {/* Export */}
-      <div className="flex gap-3">
+      {/* ── Export ─────────────────────────────────────────── */}
+      <div className="border-t border-white/[0.06] px-5 py-4 flex gap-3">
         <button
           onClick={() => onExport("pdf")}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
           style={{ background: "linear-gradient(135deg, #3B82F6, #6366F1)" }}
         >
-          <Download size={16} />
+          <Download size={14} />
           PDF 내보내기
         </button>
         <button
           onClick={() => onExport("md")}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-slate-300 border border-white/10 hover:bg-white/[0.04] transition-all duration-200 active:scale-[0.98]"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-sm text-slate-300 border border-white/10 hover:bg-white/[0.04] transition-all active:scale-[0.98]"
         >
-          <Download size={16} />
+          <Download size={14} />
           Markdown
         </button>
       </div>

@@ -38,167 +38,166 @@ interface FileReviewResult {
  *   D06. 요약문(요약보고서)과 본문이 일치하는가
  * ─────────────────────────────────────────────────────────── */
 
-/* 파일별로 다른 결과를 보여주기 위한 mock 변형 3종 */
+/* ─────────────────────────────────────────────────────────────────
+ * 파일별 mock 검토 결과 3종
+ * 각 변형은 실제 정밀안전진단 보고서에서 자주 발생하는 오류 유형을
+ * findings(페이지·구체적 오류) + rules(체크리스트) 두 레이어로 표현
+ * ──────────────────────────────────────────────────────────────── */
 const MOCK_VARIANTS: ReviewResult[] = [
-  /* ── 변형 A: 보통 수준 (용역명 혼재·날짜 불일치) ─── */
+
+  /* ──────────────────────────────────────────────────────────────
+   * 변형 A  |  보통 (71점)
+   * 대상 보고서 예시: 풍덕천교 정밀안전진단 보고서
+   * 주요 문제: 용역명 혼재 · 손상수량 불일치 · 날짜 혼재
+   * ────────────────────────────────────────────────────────────── */
   {
     guideline: { version: "v2.3", updatedAt: "2026-02-28" },
     summary: { total: 7, pass: 3, fail: 2, partial: 2, score: 71 },
-    rules: [
+
+    findings: [
       {
-        id: "O01", category: "overall",
-        rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부",
-        status: "partial",
-        location: "1~3페이지",
-        suggestion: "서두에 '조사 목적'과 '조사 범위' 항목은 수록되어 있으나, 지침이 요구하는 '업무 수행 근거(계약 번호)'가 누락되어 있습니다.",
+        page: "p.3",
+        type: "서두 구성 — 업무 수행 근거 누락",
+        detail: "지침 2.1절이 요구하는 '업무 수행 근거(계약번호 제2025-건-0312호)'가 서두에 없음. '조사 목적'·'조사 범위'는 수록되어 있으나 계약 근거가 빠져 있어 지침 미충족.",
+        severity: "error",
       },
       {
-        id: "D01", category: "detail",
-        rule: "보고서 목차가 지침 양식과 일치하는가",
-        status: "pass",
+        page: "p.15, p.22",
+        type: "용역명 오류",
+        detail: "표지·p.1에는 '풍덕천교 정밀안전진단용역'으로 표기되어 있으나, p.15 소제목과 p.22 표 상단에 '풍덕천교 정밀안전점검'으로 상이하게 기재됨. 전체 통일 필요.",
+        severity: "error",
       },
       {
-        id: "D02", category: "detail",
-        rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",
-        status: "fail",
-        location: "표지·1p / 15p·22p",
-        suggestion: "표지 및 1p에는 '○○교량 정밀안전진단'으로 표기되어 있으나, 15p·22p에는 '○○교 정밀안전점검'으로 상이하게 기재되어 있습니다. 용역명을 전체적으로 통일해 주세요.",
+        page: "p.38 / 종합보고서 표 7-2",
+        type: "손상수량 불일치 — 주거더 균열",
+        detail: "외관조사편 p.38 손상집계표: 주거더 균열 47개소 → 종합보고서 표 7-2: 43개소. 4개소 차이. 현장 야장 원본과 대조 후 수정 바람.",
+        severity: "error",
       },
       {
-        id: "D03", category: "detail",
-        rule: "부재별 외관조사 손상수량과 타 보고서의 손상수량이 일치하는가",
-        status: "partial",
-        location: "외관조사편 38p / 종합보고서 표 7-2",
-        suggestion: "주거더 균열 수량이 외관조사편(38p)에는 47개소로, 종합보고서 표 7-2에는 43개소로 상이합니다. 확인 후 통일이 필요합니다.",
-      },
-      {
-        id: "D04", category: "detail",
-        rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",
-        status: "pass",
-      },
-      {
-        id: "D05", category: "detail",
-        rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",
-        status: "fail",
-        location: "표지 / 4p / 말미 서명란",
-        suggestion: "표지에는 '2026.01', 4p 조사 일정표에는 '2025.12', 말미 서명란에는 '2026년 2월'로 서로 다른 날짜가 기재되어 있습니다. 기준 시점을 확정하고 전체 일치시켜 주세요.",
-      },
-      {
-        id: "D06", category: "detail",
-        rule: "요약문(요약보고서)과 본문이 일치하는가",
-        status: "pass",
+        page: "표지 · p.4 · 말미 서명란",
+        type: "날짜 혼재 (3가지 표기)",
+        detail: "표지: '2026.01' / p.4 조사일정표: '2025년 12월' / 말미 서명란: '2026년 2월'. 조사 완료 기준일 '2026년 1월 31일'로 전체 통일 필요.",
+        severity: "warning",
       },
     ],
+
+    rules: [
+      { id: "O01", category: "overall", rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부", status: "partial", location: "p.2~3", suggestion: "계약번호(업무 수행 근거) 항목 추가 필요." },
+      { id: "D01", category: "detail",  rule: "보고서 목차가 지침 양식과 일치하는가",                status: "pass" },
+      { id: "D02", category: "detail",  rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",       status: "fail",    location: "p.15, p.22",         suggestion: "표지 기준 용역명으로 전체 통일" },
+      { id: "D03", category: "detail",  rule: "부재별 외관조사 손상수량과 타 보고서 손상수량이 일치하는가", status: "partial", location: "p.38 / 종합 표 7-2", suggestion: "주거더 균열 4개소 차이 확인 후 수정" },
+      { id: "D04", category: "detail",  rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",  status: "pass" },
+      { id: "D05", category: "detail",  rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",             status: "fail",    location: "표지·p.4·말미",       suggestion: "조사 완료 기준일로 전체 통일" },
+      { id: "D06", category: "detail",  rule: "요약문(요약보고서)과 본문이 일치하는가",               status: "pass" },
+    ],
+
     typos: [
-      { original: "손상갯수", corrected: "손상 개수", location: "38p 2줄" },
-      { original: "안전율확보", corrected: "안전율 확보", location: "52p 5줄" },
+      { original: "손상갯수",  corrected: "손상 개수",  location: "p.38 2줄" },
+      { original: "안전율확보", corrected: "안전율 확보", location: "p.52 5줄" },
     ],
   },
 
-  /* ── 변형 B: 양호 수준 (날짜 표기만 부분 미흡) ─── */
+  /* ──────────────────────────────────────────────────────────────
+   * 변형 B  |  양호 (93점)
+   * 대상 보고서 예시: 장재2교 정기점검 보고서
+   * 주요 문제: 날짜 표기 형식 혼용(경고 수준)
+   * ────────────────────────────────────────────────────────────── */
   {
     guideline: { version: "v2.3", updatedAt: "2026-02-28" },
     summary: { total: 7, pass: 6, fail: 0, partial: 1, score: 93 },
-    rules: [
+
+    findings: [
       {
-        id: "O01", category: "overall",
-        rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부",
-        status: "pass",
-      },
-      {
-        id: "D01", category: "detail",
-        rule: "보고서 목차가 지침 양식과 일치하는가",
-        status: "pass",
-      },
-      {
-        id: "D02", category: "detail",
-        rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",
-        status: "pass",
-      },
-      {
-        id: "D03", category: "detail",
-        rule: "부재별 외관조사 손상수량과 타 보고서의 손상수량이 일치하는가",
-        status: "pass",
-      },
-      {
-        id: "D04", category: "detail",
-        rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",
-        status: "pass",
-      },
-      {
-        id: "D05", category: "detail",
-        rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",
-        status: "partial",
-        location: "2p 조사일정 표",
-        suggestion: "본문 전반의 날짜는 'YYYY년 MM월' 형식으로 통일되어 있으나, 2p 조사일정 표에서만 'YY.MM.DD' 약식 표기가 사용되었습니다. 형식을 통일해 주세요.",
-      },
-      {
-        id: "D06", category: "detail",
-        rule: "요약문(요약보고서)과 본문이 일치하는가",
-        status: "pass",
+        page: "p.2 조사일정 표",
+        type: "날짜 표기 형식 불일치",
+        detail: "본문 전반은 'YYYY년 MM월 DD일' 형식으로 통일되어 있으나, p.2 조사일정 표에서만 '25.11.14 ~ 25.12.20' 약식이 사용됨. 동일 형식으로 수정 권고.",
+        severity: "warning",
       },
     ],
+
+    rules: [
+      { id: "O01", category: "overall", rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부", status: "pass" },
+      { id: "D01", category: "detail",  rule: "보고서 목차가 지침 양식과 일치하는가",                status: "pass" },
+      { id: "D02", category: "detail",  rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",       status: "pass" },
+      { id: "D03", category: "detail",  rule: "부재별 외관조사 손상수량과 타 보고서 손상수량이 일치하는가", status: "pass" },
+      { id: "D04", category: "detail",  rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",  status: "pass" },
+      { id: "D05", category: "detail",  rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",             status: "partial", location: "p.2 조사일정 표", suggestion: "약식 표기 → 'YYYY년 MM월 DD일' 형식으로 통일" },
+      { id: "D06", category: "detail",  rule: "요약문(요약보고서)과 본문이 일치하는가",               status: "pass" },
+    ],
+
     typos: [],
   },
 
-  /* ── 변형 C: 미흡 수준 (구조 전반 문제) ─── */
+  /* ──────────────────────────────────────────────────────────────
+   * 변형 C  |  미흡 (43점)
+   * 대상 보고서 예시: 덕수지하차도 정밀안전점검 보고서
+   * 주요 문제: 서두 누락 · 목차 불일치 · 용역명 4곳 상이 ·
+   *            손상수량 복수 불일치 · 상태평가 감점 오산정 · 날짜 혼재
+   * ────────────────────────────────────────────────────────────── */
   {
     guideline: { version: "v2.3", updatedAt: "2026-02-28" },
     summary: { total: 7, pass: 1, fail: 4, partial: 2, score: 43 },
-    rules: [
+
+    findings: [
       {
-        id: "O01", category: "overall",
-        rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부",
-        status: "fail",
-        location: "1~4페이지",
-        suggestion: "지침이 요구하는 서두 필수 항목(조사 목적·근거·범위·일정·투입 기술자·사용 장비 목록) 중 '사용 장비 목록'과 '투입 기술자 현황'이 서두에 존재하지 않습니다.",
+        page: "p.1~4 (서두)",
+        type: "서두 구성 누락 — 지침 필수 항목 2개 없음",
+        detail: "지침 2.1절 필수 수록 항목 중 '투입 기술자 현황(자격·경력)'과 '사용 장비 목록(제조사·규격·교정일)'이 서두 전체에 존재하지 않음. 별도 장 추가 또는 서두에 삽입 필요.",
+        severity: "error",
       },
       {
-        id: "D01", category: "detail",
-        rule: "보고서 목차가 지침 양식과 일치하는가",
-        status: "fail",
-        location: "목차 (i페이지)",
-        suggestion: "지침 양식에 명시된 '6장 내하력 평가'와 '7장 종합 평가' 항목이 목차에서 누락되어 있습니다. 목차를 지침 양식에 맞게 수정하고 해당 장을 보완해 주세요.",
+        page: "목차 (i페이지)",
+        type: "목차 — 지침 양식 대비 2개 장 누락",
+        detail: "지침 양식 필수 장: '6장 내하력 평가'와 '7장 종합 평가 및 결론'이 목차에 없음. 본문에도 해당 내용이 작성되지 않아 보고서 구성이 지침 미충족 상태.",
+        severity: "error",
       },
       {
-        id: "D02", category: "detail",
-        rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",
-        status: "fail",
-        location: "표지 / 3p / 42p / 말미",
-        suggestion: "총 4개 위치에서 용역명이 각각 다르게 기재되어 있습니다. 표지 기준으로 전체 통일이 필요합니다.",
+        page: "표지 / p.3 / p.42 / 말미",
+        type: "용역명 4곳 모두 상이",
+        detail: "표지: '덕수지하차도 정밀안전점검용역' / p.3 머리글: '덕수지하차도 안전점검' / p.42 참고문헌 전: '덕수 지하차도 정밀점검' / 말미 서명란: '덕수지하차도 정밀안전점검'. 표지 기준으로 전체 통일 필요.",
+        severity: "error",
       },
       {
-        id: "D03", category: "detail",
-        rule: "부재별 외관조사 손상수량과 타 보고서의 손상수량이 일치하는가",
-        status: "partial",
-        location: "외관조사편 전반 / 종합보고서 표 5-1~5-4",
-        suggestion: "슬래브 균열·박리 수량은 일치하나, 교각 및 교대 손상 수량에서 외관조사편과 종합보고서 간 3~5개소 차이가 발생합니다. 원본 야장과 대조 후 수정 바랍니다.",
+        page: "p.29~33 (교각 외관조사) / 종합보고서 표 5-2",
+        type: "손상수량 불일치 — 교각",
+        detail: "교각 균열: 외관조사편 p.31 → 21개소, 종합보고서 표 5-2 → 16개소 (5개소 차이). 교각 박리: 외관조사편 p.33 → 12개소, 종합보고서 → 7개소 (5개소 차이). 야장 원본 재확인 후 수정.",
+        severity: "error",
       },
       {
-        id: "D04", category: "detail",
-        rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",
-        status: "fail",
-        location: "상태평가 종합표 (61p)",
-        suggestion: "지침 Table 4.3의 감점 기준에 따르면 주거더 균열 밀도 0.3mm 이상 항목은 -15점 처리해야 하나, 본 보고서는 -5점으로 산정되어 있습니다. 재산정이 필요합니다.",
+        page: "p.38~40 (교대 외관조사) / 종합보고서 표 5-3",
+        type: "손상수량 불일치 — 교대",
+        detail: "교대 균열: 외관조사편 p.39 → 8개소, 종합보고서 표 5-3 → 5개소 (3개소 차이). 교대 백태: 외관조사편 → 4개소, 종합보고서 → 4개소 (일치). 균열 수량 수정 필요.",
+        severity: "error",
       },
       {
-        id: "D05", category: "detail",
-        rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",
-        status: "partial",
-        location: "표지·4p·말미 서명란",
-        suggestion: "표지는 '2026.01', 4p는 '2025년 12월', 말미는 '2026-02-15'로 3가지 형식이 혼재합니다. 날짜 형식과 기준 시점을 모두 통일해 주세요.",
+        page: "p.61 상태평가 종합표",
+        type: "상태평가 감점 오산정",
+        detail: "주거더 균열 밀도 0.35mm — 지침 Table 4.3: 0.3mm 이상 시 -15점 감점이나 본 보고서는 -5점으로 산정. 재산정 후 최종 점수(현재 C등급 72점) 수정 필요. 예상 재산정 점수: 62점(C등급 유지).",
+        severity: "error",
       },
       {
-        id: "D06", category: "detail",
-        rule: "요약문(요약보고서)과 본문이 일치하는가",
-        status: "pass",
+        page: "표지 · p.4 · 말미",
+        type: "날짜 혼재 (3가지 형식)",
+        detail: "표지: '2026.01' / p.4 조사일정: '2025년 12월' / 말미 서명란: '2026-02-15'. 조사 기간 2025.11~2026.01이므로 완료일 기준 '2026년 1월 31일'로 전체 통일 권고.",
+        severity: "warning",
       },
     ],
+
+    rules: [
+      { id: "O01", category: "overall", rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부",       status: "fail",    location: "p.1~4",          suggestion: "'투입 기술자 현황', '사용 장비 목록' 추가" },
+      { id: "D01", category: "detail",  rule: "보고서 목차가 지침 양식과 일치하는가",                  status: "fail",    location: "목차 i페이지",   suggestion: "6장·7장 추가 및 본문 보완" },
+      { id: "D02", category: "detail",  rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",         status: "fail",    location: "4개소",          suggestion: "표지 기준 용역명으로 일괄 수정" },
+      { id: "D03", category: "detail",  rule: "부재별 외관조사 손상수량과 타 보고서 손상수량이 일치하는가", status: "partial", location: "교각·교대 복수",  suggestion: "교각 균열·박리, 교대 균열 수량 재확인" },
+      { id: "D04", category: "detail",  rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",    status: "fail",    location: "p.61",           suggestion: "주거더 감점 -5점 → -15점으로 재산정" },
+      { id: "D05", category: "detail",  rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",               status: "partial", location: "표지·p.4·말미",  suggestion: "완료일 2026.01.31 기준 통일" },
+      { id: "D06", category: "detail",  rule: "요약문(요약보고서)과 본문이 일치하는가",                  status: "pass" },
+    ],
+
     typos: [
-      { original: "손상갯수",     corrected: "손상 개수",     location: "29p 1줄" },
-      { original: "안전율확보",   corrected: "안전율 확보",   location: "43p 3줄" },
-      { original: "공용하중",     corrected: "공용 하중",     location: "55p 7줄" },
-      { original: "내하력산정",   corrected: "내하력 산정",   location: "61p 2줄" },
+      { original: "손상갯수",  corrected: "손상 개수",  location: "p.29 1줄" },
+      { original: "안전율확보", corrected: "안전율 확보", location: "p.43 3줄" },
+      { original: "공용하중",  corrected: "공용 하중",  location: "p.55 7줄" },
+      { original: "내하력산정", corrected: "내하력 산정", location: "p.61 2줄" },
     ],
   },
 ];
@@ -250,7 +249,6 @@ export default function HomePage() {
   /* Review */
   const [isReviewing, setIsReviewing] = useState(false);
   const [fileResults, setFileResults] = useState<FileReviewResult[]>([]);
-  const [activeFileIdx, setActiveFileIdx] = useState(0);
   const [reviewProgress, setReviewProgress] = useState<{ current: number; total: number } | null>(null);
 
   /* Stats — start at 0, update after each review */
@@ -328,7 +326,6 @@ export default function HomePage() {
     if (!canReview) return;
     setIsReviewing(true);
     setFileResults([]);
-    setActiveFileIdx(0);
 
     const results: FileReviewResult[] = [];
     for (let i = 0; i < reportFiles.length; i++) {
@@ -396,7 +393,7 @@ export default function HomePage() {
           className="sticky top-0 z-30 border-b border-white/[0.06]"
           style={{ background: "rgba(11,17,32,0.85)", backdropFilter: "blur(20px)" }}
         >
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -427,7 +424,7 @@ export default function HomePage() {
           className="border-b border-white/[0.04]"
           style={{ background: "rgba(255,255,255,0.01)" }}
         >
-          <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="max-w-6xl mx-auto px-6 py-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 {
@@ -487,8 +484,8 @@ export default function HomePage() {
         </div>
 
         {/* ── Main Content ────────────────────────────────────── */}
-        <main className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-8 items-start">
+        <main className="max-w-6xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 items-start">
 
             {/* ─── Left Panel: Controls ─────────────────────── */}
             <div className="space-y-5">
@@ -813,13 +810,13 @@ export default function HomePage() {
             </div>
 
             {/* ─── Right Panel: Results ──────────────────────── */}
-            <div className="lg:sticky lg:top-24 space-y-4">
+            <div className="space-y-5">
 
-              {/* Reviewing — progress per file */}
+              {/* Reviewing — per-file progress */}
               {isReviewing && (
                 <div className="glass-card rounded-2xl overflow-hidden">
                   <div className="shimmer h-1 w-full" />
-                  <div className="p-14 flex flex-col items-center gap-5">
+                  <div className="p-12 flex flex-col items-center gap-5">
                     <div
                       className="w-20 h-20 rounded-2xl flex items-center justify-center"
                       style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}
@@ -831,7 +828,7 @@ export default function HomePage() {
                       {reviewProgress && (
                         <>
                           <p className="text-sm text-slate-400 mt-2">
-                            {reviewProgress.current} / {reviewProgress.total} 파일 처리 중
+                            {reviewProgress.current} / {reviewProgress.total} 파일 분석 중
                           </p>
                           <p className="text-xs text-slate-500 mt-1 truncate px-4">
                             {reportFiles[reviewProgress.current - 1]?.name}
@@ -852,55 +849,28 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Per-file results */}
+              {/* ── 파일별 검토 결과 — 수직 나열 ───────────────── */}
               {fileResults.length > 0 && !isReviewing && (
-                <>
-                  {/* File tab selector */}
-                  <div className="glass-card rounded-2xl overflow-hidden">
-                    <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-white">파일별 검토 결과</h3>
-                      <span className="text-xs text-slate-500">{fileResults.length}개 파일 완료</span>
-                    </div>
-                    <div className="flex overflow-x-auto">
-                      {fileResults.map((fr, idx) => {
-                        const score = fr.result.summary.score;
-                        const isActive = activeFileIdx === idx;
-                        const scoreColor =
-                          score >= 80 ? "text-emerald-400" :
-                          score >= 60 ? "text-amber-400" : "text-red-400";
-                        const scoreDot =
-                          score >= 80 ? "bg-emerald-400" :
-                          score >= 60 ? "bg-amber-400" : "bg-red-400";
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => setActiveFileIdx(idx)}
-                            className={`flex-shrink-0 flex flex-col items-start px-4 py-3 border-b-2 transition-all text-left min-w-[140px] max-w-[220px] ${
-                              isActive
-                                ? "border-blue-500 bg-blue-500/5"
-                                : "border-transparent hover:bg-white/[0.02]"
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 w-full">
-                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${scoreDot}`} />
-                              <p className="text-xs text-slate-400 truncate flex-1">{fr.fileName}</p>
-                            </div>
-                            <p className={`text-xl font-bold mt-1 ${scoreColor}`}>
-                              {score}
-                              <span className="text-xs font-normal text-slate-500 ml-0.5">점</span>
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
+                <div className="space-y-5">
+                  {/* 상단 요약 헤더 */}
+                  <div
+                    className="px-4 py-3 rounded-xl flex items-center justify-between"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  >
+                    <p className="text-sm font-semibold text-white">파일별 검토 결과</p>
+                    <span className="text-xs text-slate-500">{fileResults.length}개 파일 · 검토 완료</span>
                   </div>
 
-                  {/* Active file's review detail */}
-                  <ReviewResultView
-                    result={fileResults[activeFileIdx]?.result ?? fileResults[0].result}
-                    onExport={handleExport}
-                  />
-                </>
+                  {/* 파일마다 — 파일명 헤더 + 결과 카드 */}
+                  {fileResults.map((fr, idx) => (
+                    <ReviewResultView
+                      key={idx}
+                      fileName={fr.fileName}
+                      result={fr.result}
+                      onExport={handleExport}
+                    />
+                  ))}
+                </div>
               )}
 
               {/* Empty state */}

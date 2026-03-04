@@ -13,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body>
+      <body className="antialiased" style={{ margin: 0, padding: 0 }}>
         {children}
       </body>
     </html>
