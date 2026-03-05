@@ -50,3 +50,11 @@ export interface ReviewResult {
   rules: RuleResult[];
   typos: TypoItem[];
 }
+
+/** API 응답에서 파일 1개의 검토 결과 */
+export interface FileReviewResult {
+  fileName: string;
+  result?: ReviewResult;
+  /** 파싱 또는 API 오류 시 */
+  error?: string;
+}
