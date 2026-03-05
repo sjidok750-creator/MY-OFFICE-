@@ -7,7 +7,7 @@ import {
   ChevronRight, Plus, AlertCircle, CheckCircle, Files,
 } from "lucide-react";
 import ReviewResultView from "@/components/ReviewResult";
-import type { ReviewResult } from "@/types/review";
+import type { FileReviewResult } from "@/types/review";
 
 /* ── Constants ──────────────────────────────────────────────── */
 const ALLOWED_EXT = [".docx", ".pdf", ".txt", ".md"];
@@ -20,187 +20,6 @@ const ALLOWED_TYPES = [
 const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
 
-interface FileReviewResult {
-  fileName: string;
-  result: ReviewResult;
-}
-
-/*
- * ── 검토 원칙 ────────────────────────────────────────────────
- * [최초 종합 검토] 검토기준을 면밀히 살펴보고 보고서가 형식·내용
- *   전반에서 지침과 일치하는지 최초 확인 (서두 구성 등)
- * [세부사항 검토]
- *   D01. 보고서 목차가 지침과 일치하는가
- *   D02. 용역명이 전체 보고서에 동일하게 수록되었는가
- *   D03. 부재별 외관조사 손상수량과 타 보고서의 손상수량이 일치하는가
- *   D04. 상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가
- *   D05. 보고서 내 날짜들이 통일성을 갖추고 있는가
- *   D06. 요약문(요약보고서)과 본문이 일치하는가
- * ─────────────────────────────────────────────────────────── */
-
-/* ─────────────────────────────────────────────────────────────────
- * 파일별 mock 검토 결과 3종
- * 각 변형은 실제 정밀안전진단 보고서에서 자주 발생하는 오류 유형을
- * findings(페이지·구체적 오류) + rules(체크리스트) 두 레이어로 표현
- * ──────────────────────────────────────────────────────────────── */
-const MOCK_VARIANTS: ReviewResult[] = [
-
-  /* ──────────────────────────────────────────────────────────────
-   * 변형 A  |  보통 (71점)
-   * 대상 보고서 예시: 풍덕천교 정밀안전진단 보고서
-   * 주요 문제: 용역명 혼재 · 손상수량 불일치 · 날짜 혼재
-   * ────────────────────────────────────────────────────────────── */
-  {
-    guideline: { version: "v2.3", updatedAt: "2026-02-28" },
-    summary: { total: 7, pass: 3, fail: 2, partial: 2, score: 71 },
-
-    findings: [
-      {
-        page: "p.3",
-        type: "서두 구성 — 업무 수행 근거 누락",
-        detail: "지침 2.1절이 요구하는 '업무 수행 근거(계약번호 제2025-건-0312호)'가 서두에 없음. '조사 목적'·'조사 범위'는 수록되어 있으나 계약 근거가 빠져 있어 지침 미충족.",
-        severity: "error",
-      },
-      {
-        page: "p.15, p.22",
-        type: "용역명 오류",
-        detail: "표지·p.1에는 '풍덕천교 정밀안전진단용역'으로 표기되어 있으나, p.15 소제목과 p.22 표 상단에 '풍덕천교 정밀안전점검'으로 상이하게 기재됨. 전체 통일 필요.",
-        severity: "error",
-      },
-      {
-        page: "p.38 / 종합보고서 표 7-2",
-        type: "손상수량 불일치 — 주거더 균열",
-        detail: "외관조사편 p.38 손상집계표: 주거더 균열 47개소 → 종합보고서 표 7-2: 43개소. 4개소 차이. 현장 야장 원본과 대조 후 수정 바람.",
-        severity: "error",
-      },
-      {
-        page: "표지 · p.4 · 말미 서명란",
-        type: "날짜 혼재 (3가지 표기)",
-        detail: "표지: '2026.01' / p.4 조사일정표: '2025년 12월' / 말미 서명란: '2026년 2월'. 조사 완료 기준일 '2026년 1월 31일'로 전체 통일 필요.",
-        severity: "warning",
-      },
-    ],
-
-    rules: [
-      { id: "O01", category: "overall", rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부", status: "partial", location: "p.2~3", suggestion: "계약번호(업무 수행 근거) 항목 추가 필요." },
-      { id: "D01", category: "detail",  rule: "보고서 목차가 지침 양식과 일치하는가",                status: "pass" },
-      { id: "D02", category: "detail",  rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",       status: "fail",    location: "p.15, p.22",         suggestion: "표지 기준 용역명으로 전체 통일" },
-      { id: "D03", category: "detail",  rule: "부재별 외관조사 손상수량과 타 보고서 손상수량이 일치하는가", status: "partial", location: "p.38 / 종합 표 7-2", suggestion: "주거더 균열 4개소 차이 확인 후 수정" },
-      { id: "D04", category: "detail",  rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",  status: "pass" },
-      { id: "D05", category: "detail",  rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",             status: "fail",    location: "표지·p.4·말미",       suggestion: "조사 완료 기준일로 전체 통일" },
-      { id: "D06", category: "detail",  rule: "요약문(요약보고서)과 본문이 일치하는가",               status: "pass" },
-    ],
-
-    typos: [
-      { original: "손상갯수",  corrected: "손상 개수",  location: "p.38 2줄" },
-      { original: "안전율확보", corrected: "안전율 확보", location: "p.52 5줄" },
-    ],
-  },
-
-  /* ──────────────────────────────────────────────────────────────
-   * 변형 B  |  양호 (93점)
-   * 대상 보고서 예시: 장재2교 정기점검 보고서
-   * 주요 문제: 날짜 표기 형식 혼용(경고 수준)
-   * ────────────────────────────────────────────────────────────── */
-  {
-    guideline: { version: "v2.3", updatedAt: "2026-02-28" },
-    summary: { total: 7, pass: 6, fail: 0, partial: 1, score: 93 },
-
-    findings: [
-      {
-        page: "p.2 조사일정 표",
-        type: "날짜 표기 형식 불일치",
-        detail: "본문 전반은 'YYYY년 MM월 DD일' 형식으로 통일되어 있으나, p.2 조사일정 표에서만 '25.11.14 ~ 25.12.20' 약식이 사용됨. 동일 형식으로 수정 권고.",
-        severity: "warning",
-      },
-    ],
-
-    rules: [
-      { id: "O01", category: "overall", rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부", status: "pass" },
-      { id: "D01", category: "detail",  rule: "보고서 목차가 지침 양식과 일치하는가",                status: "pass" },
-      { id: "D02", category: "detail",  rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",       status: "pass" },
-      { id: "D03", category: "detail",  rule: "부재별 외관조사 손상수량과 타 보고서 손상수량이 일치하는가", status: "pass" },
-      { id: "D04", category: "detail",  rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",  status: "pass" },
-      { id: "D05", category: "detail",  rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",             status: "partial", location: "p.2 조사일정 표", suggestion: "약식 표기 → 'YYYY년 MM월 DD일' 형식으로 통일" },
-      { id: "D06", category: "detail",  rule: "요약문(요약보고서)과 본문이 일치하는가",               status: "pass" },
-    ],
-
-    typos: [],
-  },
-
-  /* ──────────────────────────────────────────────────────────────
-   * 변형 C  |  미흡 (43점)
-   * 대상 보고서 예시: 덕수지하차도 정밀안전점검 보고서
-   * 주요 문제: 서두 누락 · 목차 불일치 · 용역명 4곳 상이 ·
-   *            손상수량 복수 불일치 · 상태평가 감점 오산정 · 날짜 혼재
-   * ────────────────────────────────────────────────────────────── */
-  {
-    guideline: { version: "v2.3", updatedAt: "2026-02-28" },
-    summary: { total: 7, pass: 1, fail: 4, partial: 2, score: 43 },
-
-    findings: [
-      {
-        page: "p.1~4 (서두)",
-        type: "서두 구성 누락 — 지침 필수 항목 2개 없음",
-        detail: "지침 2.1절 필수 수록 항목 중 '투입 기술자 현황(자격·경력)'과 '사용 장비 목록(제조사·규격·교정일)'이 서두 전체에 존재하지 않음. 별도 장 추가 또는 서두에 삽입 필요.",
-        severity: "error",
-      },
-      {
-        page: "목차 (i페이지)",
-        type: "목차 — 지침 양식 대비 2개 장 누락",
-        detail: "지침 양식 필수 장: '6장 내하력 평가'와 '7장 종합 평가 및 결론'이 목차에 없음. 본문에도 해당 내용이 작성되지 않아 보고서 구성이 지침 미충족 상태.",
-        severity: "error",
-      },
-      {
-        page: "표지 / p.3 / p.42 / 말미",
-        type: "용역명 4곳 모두 상이",
-        detail: "표지: '덕수지하차도 정밀안전점검용역' / p.3 머리글: '덕수지하차도 안전점검' / p.42 참고문헌 전: '덕수 지하차도 정밀점검' / 말미 서명란: '덕수지하차도 정밀안전점검'. 표지 기준으로 전체 통일 필요.",
-        severity: "error",
-      },
-      {
-        page: "p.29~33 (교각 외관조사) / 종합보고서 표 5-2",
-        type: "손상수량 불일치 — 교각",
-        detail: "교각 균열: 외관조사편 p.31 → 21개소, 종합보고서 표 5-2 → 16개소 (5개소 차이). 교각 박리: 외관조사편 p.33 → 12개소, 종합보고서 → 7개소 (5개소 차이). 야장 원본 재확인 후 수정.",
-        severity: "error",
-      },
-      {
-        page: "p.38~40 (교대 외관조사) / 종합보고서 표 5-3",
-        type: "손상수량 불일치 — 교대",
-        detail: "교대 균열: 외관조사편 p.39 → 8개소, 종합보고서 표 5-3 → 5개소 (3개소 차이). 교대 백태: 외관조사편 → 4개소, 종합보고서 → 4개소 (일치). 균열 수량 수정 필요.",
-        severity: "error",
-      },
-      {
-        page: "p.61 상태평가 종합표",
-        type: "상태평가 감점 오산정",
-        detail: "주거더 균열 밀도 0.35mm — 지침 Table 4.3: 0.3mm 이상 시 -15점 감점이나 본 보고서는 -5점으로 산정. 재산정 후 최종 점수(현재 C등급 72점) 수정 필요. 예상 재산정 점수: 62점(C등급 유지).",
-        severity: "error",
-      },
-      {
-        page: "표지 · p.4 · 말미",
-        type: "날짜 혼재 (3가지 형식)",
-        detail: "표지: '2026.01' / p.4 조사일정: '2025년 12월' / 말미 서명란: '2026-02-15'. 조사 기간 2025.11~2026.01이므로 완료일 기준 '2026년 1월 31일'로 전체 통일 권고.",
-        severity: "warning",
-      },
-    ],
-
-    rules: [
-      { id: "O01", category: "overall", rule: "보고서 서두 구성 — 지침 필수 포함 항목 수록 여부",       status: "fail",    location: "p.1~4",          suggestion: "'투입 기술자 현황', '사용 장비 목록' 추가" },
-      { id: "D01", category: "detail",  rule: "보고서 목차가 지침 양식과 일치하는가",                  status: "fail",    location: "목차 i페이지",   suggestion: "6장·7장 추가 및 본문 보완" },
-      { id: "D02", category: "detail",  rule: "용역명이 전체 보고서에 동일하게 수록되어 있는가",         status: "fail",    location: "4개소",          suggestion: "표지 기준 용역명으로 일괄 수정" },
-      { id: "D03", category: "detail",  rule: "부재별 외관조사 손상수량과 타 보고서 손상수량이 일치하는가", status: "partial", location: "교각·교대 복수",  suggestion: "교각 균열·박리, 교대 균열 수량 재확인" },
-      { id: "D04", category: "detail",  rule: "상태평가 점수가 검토기준 지시에 따라 평가·기재되었는가",    status: "fail",    location: "p.61",           suggestion: "주거더 감점 -5점 → -15점으로 재산정" },
-      { id: "D05", category: "detail",  rule: "보고서 내 날짜들이 통일성을 갖추고 있는가",               status: "partial", location: "표지·p.4·말미",  suggestion: "완료일 2026.01.31 기준 통일" },
-      { id: "D06", category: "detail",  rule: "요약문(요약보고서)과 본문이 일치하는가",                  status: "pass" },
-    ],
-
-    typos: [
-      { original: "손상갯수",  corrected: "손상 개수",  location: "p.29 1줄" },
-      { original: "안전율확보", corrected: "안전율 확보", location: "p.43 3줄" },
-      { original: "공용하중",  corrected: "공용 하중",  location: "p.55 7줄" },
-      { original: "내하력산정", corrected: "내하력 산정", location: "p.61 2줄" },
-    ],
-  },
-];
 
 /* ── Helpers ────────────────────────────────────────────────── */
 function formatBytes(bytes: number): string {
@@ -327,38 +146,59 @@ export default function HomePage() {
     setIsReviewing(true);
     setFileResults([]);
 
-    const results: FileReviewResult[] = [];
+    const accumulated: FileReviewResult[] = [];
+
     for (let i = 0; i < reportFiles.length; i++) {
       setReviewProgress({ current: i + 1, total: reportFiles.length });
-      await new Promise((r) => setTimeout(r, 1500));
-      results.push({
-        fileName: reportFiles[i].name,
-        result: MOCK_VARIANTS[i % MOCK_VARIANTS.length],
-      });
+
+      const fd = new FormData();
+      uploadedGls.forEach((f) => fd.append("guideline[]", f));
+      fd.append("report[]", reportFiles[i]);
+
+      let fr: FileReviewResult;
+      try {
+        const res = await fetch("/api/review", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? `서버 오류 ${res.status}`);
+        // API returns { results: FileReviewResult[] } with one entry
+        fr = (data.results as FileReviewResult[])[0] ?? {
+          fileName: reportFiles[i].name,
+          error: "서버 응답 형식 오류",
+        };
+      } catch (e) {
+        fr = { fileName: reportFiles[i].name, error: String(e) };
+      }
+
+      accumulated.push(fr);
+      // Show results as they arrive — don't wait for all files
+      setFileResults([...accumulated]);
     }
 
-    setFileResults(results);
     setReviewProgress(null);
     setIsReviewing(false);
 
-    /* Real-time stats update — accumulate per file */
-    results.forEach((fr) => {
-      historyRef.current.push({
-        score: fr.result.summary.score,
-        pass: fr.result.summary.pass,
-        total: fr.result.summary.total,
-        typos: fr.result.typos.length,
-      });
+    /* Accumulate stats for successfully reviewed files */
+    accumulated.forEach((fr) => {
+      if (fr.result) {
+        historyRef.current.push({
+          score: fr.result.summary.score,
+          pass: fr.result.summary.pass,
+          total: fr.result.summary.total,
+          typos: fr.result.typos.length,
+        });
+      }
     });
     const h = historyRef.current;
-    setStats({
-      reviews: h.length,
-      avgScore: Math.round(h.reduce((s, x) => s + x.score, 0) / h.length),
-      passRate: Math.round(
-        (h.reduce((s, x) => s + x.pass, 0) / h.reduce((s, x) => s + x.total, 0)) * 100
-      ),
-      typos: h.reduce((s, x) => s + x.typos, 0),
-    });
+    if (h.length > 0) {
+      setStats({
+        reviews: h.length,
+        avgScore: Math.round(h.reduce((s, x) => s + x.score, 0) / h.length),
+        passRate: Math.round(
+          (h.reduce((s, x) => s + x.pass, 0) / h.reduce((s, x) => s + x.total, 0)) * 100
+        ),
+        typos: h.reduce((s, x) => s + x.typos, 0),
+      });
+    }
   }
 
   function handleExport(format: "pdf" | "md") {
@@ -862,14 +702,24 @@ export default function HomePage() {
                   </div>
 
                   {/* 파일마다 — 파일명 헤더 + 결과 카드 */}
-                  {fileResults.map((fr, idx) => (
-                    <ReviewResultView
-                      key={idx}
-                      fileName={fr.fileName}
-                      result={fr.result}
-                      onExport={handleExport}
-                    />
-                  ))}
+                  {fileResults.map((fr, idx) =>
+                    fr.error ? (
+                      <div
+                        key={idx}
+                        className="glass-card rounded-2xl p-6 border border-red-500/20"
+                      >
+                        <p className="text-sm font-semibold text-white mb-1 truncate">{fr.fileName}</p>
+                        <p className="text-xs text-red-400 whitespace-pre-wrap">{fr.error}</p>
+                      </div>
+                    ) : fr.result ? (
+                      <ReviewResultView
+                        key={idx}
+                        fileName={fr.fileName}
+                        result={fr.result}
+                        onExport={handleExport}
+                      />
+                    ) : null
+                  )}
                 </div>
               )}
 
