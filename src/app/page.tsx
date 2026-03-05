@@ -158,7 +158,19 @@ export default function HomePage() {
       let fr: FileReviewResult;
       try {
         const res = await fetch("/api/review", { method: "POST", body: fd });
-        const data = await res.json();
+        const rawText = await res.text();
+        let data: { results?: FileReviewResult[]; error?: string };
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          // Server returned non-JSON (e.g. Netlify timeout/crash)
+          const preview = rawText.slice(0, 200);
+          throw new Error(
+            res.status === 502 || res.status === 504
+              ? `서버 시간 초과 (파일이 너무 크거나 처리 시간 초과). 파일 수를 줄이거나 작은 파일로 시도해 주세요.`
+              : `서버 응답 오류 (${res.status}): ${preview}`
+          );
+        }
         if (!res.ok) throw new Error(data.error ?? `서버 오류 ${res.status}`);
         // API returns { results: FileReviewResult[] } with one entry
         fr = (data.results as FileReviewResult[])[0] ?? {

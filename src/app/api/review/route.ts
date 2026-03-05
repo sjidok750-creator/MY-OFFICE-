@@ -28,11 +28,16 @@ async function extractText(file: File): Promise<string> {
   return buffer.toString("utf-8");
 }
 
-// Trim text to avoid exceeding context window (approx 80K chars ≈ 20K tokens)
-function trimText(text: string, maxChars = 80_000): string {
+// Trim text to avoid exceeding context window
+function trimText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return text.slice(0, maxChars) + "\n\n[... 이하 내용은 길이 제한으로 생략됨 ...]";
 }
+
+// Per-file limit: large files (e.g. 14MB PDF) trimmed before concatenating
+const MAX_CHARS_PER_GUIDELINE_FILE = 10_000; // ~2.5K tokens each
+const MAX_CHARS_GUIDELINE_TOTAL = 30_000;    // ~7.5K tokens total
+const MAX_CHARS_REPORT = 50_000;             // ~12.5K tokens per report
 
 // ─── Claude prompt ────────────────────────────────────────────────────────────
 
@@ -134,18 +139,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // Extract guideline text (all guideline files concatenated)
+  // Extract guideline text (all guideline files concatenated, trimmed per file)
   let guidelineText = "";
   for (const f of guidelineFiles) {
     try {
       const text = await extractText(f);
-      guidelineText += `\n\n=== ${f.name} ===\n${text}`;
+      // Trim each file individually before concatenating to avoid one large file dominating
+      const trimmed = trimText(text, MAX_CHARS_PER_GUIDELINE_FILE);
+      guidelineText += `\n\n=== ${f.name} ===\n${trimmed}`;
     } catch (e) {
       console.error(`[review] guideline 파싱 실패: ${f.name}`, e);
       guidelineText += `\n\n=== ${f.name} === [파싱 실패: ${String(e)}]`;
     }
   }
-  guidelineText = trimText(guidelineText, 60_000);
+  guidelineText = trimText(guidelineText, MAX_CHARS_GUIDELINE_TOTAL);
 
   const client = new Anthropic({ apiKey });
   const results: FileReviewResult[] = [];
@@ -163,7 +170,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       continue;
     }
 
-    reportText = trimText(reportText, 80_000);
+    reportText = trimText(reportText, MAX_CHARS_REPORT);
 
     const prompt = buildPrompt(guidelineText, reportText);
 
@@ -189,6 +196,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Parse JSON from Claude's response
     let reviewResult: ReviewResult;
     try {
+      if (!raw) throw new Error("Claude 응답이 비어 있습니다.");
+      // Detect non-JSON error responses from the API
+      if (!raw.trimStart().startsWith("{")) {
+        throw new Error(`Claude가 JSON 대신 오류 메시지를 반환했습니다: ${raw.slice(0, 300)}`);
+      }
       // Strip any markdown code fences if present
       const jsonStr = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
       reviewResult = JSON.parse(jsonStr) as ReviewResult;
@@ -196,7 +208,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       console.error(`[review] JSON 파싱 실패`, e, "\nRaw:", raw.slice(0, 500));
       results.push({
         fileName: reportFile.name,
-        error: `응답 파싱 실패. Claude 원문:\n${raw.slice(0, 1000)}`,
+        error: String(e),
       });
       continue;
     }
